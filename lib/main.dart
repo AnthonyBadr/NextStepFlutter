@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:device_preview/device_preview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -6,9 +7,14 @@ import 'auth/login_page.dart';
 import 'auth/register_page.dart'; // Import the login page
 import 'sharedpreferences/shared_pref.dart';
 import 'auth/pick_role.dart';
+import 'auth/register_therapist.dart';
+import 'package:flutter/foundation.dart';  // Import foundation.dart for kReleaseMode
 
 void main() {
-  runApp(const MyApp());
+  runApp(DevicePreview(
+    enabled: !kReleaseMode,  // Fixed typo in 'kReleaseMode'
+    builder: (context) => MyApp(),  // Replace with your main app widget
+  ));
 }
 
 class MyApp extends StatelessWidget {
@@ -18,17 +24,20 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'User API Demo',
+        locale: DevicePreview.locale(context), // Correctly set the locale using DevicePreview
+      builder: DevicePreview.appBuilder,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
       // Remove the home property and use initialRoute instead
       initialRoute: '/',  // This specifies the starting route
       routes: {
-        '/': (context) => const MyHomePage(title: 'User Data'),
+        '/': (context) => const PickRolePage(),
         '/login': (context) => const LoginPage(),
         '/shared_prefs': (context) => const SharedPrefsDebugScreen(),  // Add this
          '/PickRolePage': (context) => const PickRolePage(),  // Add this
          '/RegisterPage': (context) =>  RegistrationPage(),  // Add this
+         '/Therapist_Register': (context) =>  Therapist_Register(),  // Add this
       },
     );
   }

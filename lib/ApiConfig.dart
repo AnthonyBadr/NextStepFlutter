@@ -3,7 +3,7 @@ class ApiConfig {
   ApiConfig._();
 
   // Base URL
-  static const String baseUrl = 'http://192.168.1.105:8080';
+  static const String baseUrl = 'http://192.168.1.104:8080';
 
   // API Routes
   static const String loginRoute = '$baseUrl/user/login';

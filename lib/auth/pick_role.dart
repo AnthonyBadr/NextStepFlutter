@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:my_app/auth/register_therapist.dart';
 class PickRolePage extends StatelessWidget {
   const PickRolePage({super.key});
 
@@ -104,7 +105,7 @@ class PickRolePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
-        onTap: () => _selectRole(context, title.toLowerCase()),
+        onTap: () => _selectRole(context, title.toLowerCase()), // Pass context here
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -150,30 +151,16 @@ class PickRolePage extends StatelessWidget {
     );
   }
 
-  void _selectRole(BuildContext context, String role) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Confirm Role: ${role.toUpperCase()}'),
-          content: Text('Do you want to continue as a $role?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('CANCEL'),
-            ),
-            FilledButton(
-              onPressed: () async {
-             
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString('userRole', role); // Store the role
-
-              },
-              child: const Text('CONFIRM'),
-            ),
-          ],
-        );
-      },
-    );
+  void _selectRole(BuildContext context, String role) async {
+    print('Selected Role: $role'); // Log the selected role
+    if (role == "therapist") {
+      // Navigate to the Therapist_Register page
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const Therapist_Register()),
+      );
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userRole', role); // Store the role
   }
 }

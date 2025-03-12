@@ -37,7 +37,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => Therapist_Register(userData: userData), // Pass data to the next page
+          builder: (context) => Therapist_Register(), // Pass data to the next page
         ),
       );
     }
