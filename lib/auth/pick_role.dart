@@ -157,7 +157,7 @@ class PickRolePage extends StatelessWidget {
       // Navigate to the Therapist_Register page
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const Therapist_Register()),
+        MaterialPageRoute(builder: (context) =>  TherapistRegisterPage1()),
       );
     }
     final prefs = await SharedPreferences.getInstance();
