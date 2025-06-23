@@ -1,14 +1,19 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:my_app/auth/login_page.dart';
+import 'package:my_app/auth/test.dart';
+import 'package:my_app/homepage/pageorg.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../ApiConfig.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
-void main() {
-  runApp(const MaterialApp(
-    home: TherapistRegisterPage1(),
-    debugShowCheckedModeBanner: false,
-  ));
-}
+
 
 class TherapistRegisterPage1 extends StatefulWidget {
   const TherapistRegisterPage1({super.key});
@@ -20,103 +25,75 @@ class TherapistRegisterPage1 extends StatefulWidget {
 class _TherapistRegisterPage1State extends State<TherapistRegisterPage1> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  final confirmController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
         title: const Text("Therapist Registration"),
       ),
-     body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(), // Dismiss keyboard
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            const LinearProgressIndicator(
-              value: 0.33,
-              color: Colors.blue,
-            ),
+            const LinearProgressIndicator(value: 0.33, color: Colors.blue),
             const SizedBox(height: 16),
-            const Text(
-              "Therapist",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+            const Text("Account Details", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text("By signing up you are agreeing to our Terms and Privacy Policy"),
+            const Text("Please provide your login credentials."),
             const SizedBox(height: 24),
             TextField(
               controller: emailController,
-               keyboardType: TextInputType.emailAddress,
+              keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
-                labelText: 'Email Address',
+                labelText: 'Email',
                 prefixIcon: Icon(Icons.email),
-             
                 floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 16),
             TextField(
               controller: passwordController,
               obscureText: true,
               decoration: const InputDecoration(
                 labelText: 'Password',
                 prefixIcon: Icon(Icons.lock),
-                suffixIcon: Icon(Icons.remove_red_eye),
                 floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 16),
             TextField(
-              controller: confirmController,
+              controller: confirmPasswordController,
               obscureText: true,
               decoration: const InputDecoration(
                 labelText: 'Confirm Password',
-                prefixIcon: Icon(Icons.lock),
-                suffixIcon: Icon(Icons.remove_red_eye),
+                prefixIcon: Icon(Icons.lock_outline),
                 floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
               ),
             ),
-           
+            const SizedBox(height: 80),
           ],
         ),
       ),
-       ),
-      bottomNavigationBar: AnimatedPadding(
-        duration: const Duration(milliseconds: 10),
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          left: 16,
-          right: 16,
-        ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         child: TextButton(
           onPressed: () {
+            if (passwordController.text != confirmPasswordController.text) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Passwords do not match")),
+              );
+              return;
+            }
+
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -152,19 +129,17 @@ class TherapistRegisterPage2 extends StatefulWidget {
 class _TherapistRegisterPage2State extends State<TherapistRegisterPage2> {
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
-
   String gender = 'Male';
   String maritalStatus = 'Single';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text("Therapist Registration"),
       ),
@@ -172,89 +147,58 @@ class _TherapistRegisterPage2State extends State<TherapistRegisterPage2> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            const LinearProgressIndicator(
-              value: 0.66,
-              color: Colors.blue,
-            ),
+            const LinearProgressIndicator(value: 0.66, color: Colors.blue),
             const SizedBox(height: 16),
-            const Text(
-              "Therapist",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+            const Text("Therapist", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             const Text("By signing up you are agreeing to our Terms and Privacy Policy"),
             const SizedBox(height: 24),
-
             TextField(
               controller: firstNameController,
               decoration: const InputDecoration(
                 labelText: 'First Name',
-                
                 prefixIcon: Icon(Icons.person),
                 floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
               ),
             ),
             const SizedBox(height: 16),
-
             TextField(
               controller: lastNameController,
               decoration: const InputDecoration(
                 labelText: 'Last Name',
                 prefixIcon: Icon(Icons.person_outline),
                 floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
               ),
             ),
             const SizedBox(height: 16),
-
             DropdownButtonFormField<String>(
               value: gender,
               decoration: const InputDecoration(
                 labelText: 'Gender',
                 prefixIcon: Icon(Icons.wc),
                 floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
               ),
               items: const [
                 DropdownMenuItem(value: 'Male', child: Text('Male')),
                 DropdownMenuItem(value: 'Female', child: Text('Female')),
               ],
-              onChanged: (value) {
-                setState(() {
-                  gender = value!;
-                });
-              },
+              onChanged: (value) => setState(() => gender = value!),
             ),
             const SizedBox(height: 16),
-
             DropdownButtonFormField<String>(
               value: maritalStatus,
               decoration: const InputDecoration(
                 labelText: 'Marital Status',
                 prefixIcon: Icon(Icons.family_restroom),
                 floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
               ),
               items: const [
                 DropdownMenuItem(value: 'Single', child: Text('Single')),
@@ -262,35 +206,22 @@ class _TherapistRegisterPage2State extends State<TherapistRegisterPage2> {
                 DropdownMenuItem(value: 'Divorced', child: Text('Divorced')),
                 DropdownMenuItem(value: 'Widowed', child: Text('Widowed')),
               ],
-              onChanged: (value) {
-                setState(() {
-                  maritalStatus = value!;
-                });
-              },
+              onChanged: (value) => setState(() => maritalStatus = value!),
             ),
-
-            const SizedBox(height: 80), // Extra space to prevent overlap
+            const SizedBox(height: 80),
           ],
         ),
       ),
-      bottomNavigationBar: AnimatedPadding(
-        duration: const Duration(milliseconds: 10),
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          left: 16,
-          right: 16,
-        ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         child: TextButton(
           onPressed: () {
-            // You can pass these new fields to the next page if needed
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => TherapistRegisterPage3(
-                  // you might need to update this page constructor for these new fields
-                  // For now just passing gender and marital status for example
-                  email: '',       // empty or update accordingly
-                  password: '',    // empty or update accordingly
+                  email: widget.email,
+                  password: widget.password,
                   firstName: firstNameController.text,
                   lastName: lastNameController.text,
                   gender: gender,
@@ -311,14 +242,13 @@ class _TherapistRegisterPage2State extends State<TherapistRegisterPage2> {
   }
 }
 
-
 class TherapistRegisterPage3 extends StatefulWidget {
   final String email;
   final String password;
   final String firstName;
   final String lastName;
   final String gender;
-   final String maritalStatus;
+  final String maritalStatus;
 
   const TherapistRegisterPage3({
     super.key,
@@ -326,8 +256,8 @@ class TherapistRegisterPage3 extends StatefulWidget {
     required this.password,
     required this.firstName,
     required this.lastName,
-    required this.maritalStatus,
     required this.gender,
+    required this.maritalStatus,
   });
 
   @override
@@ -342,118 +272,235 @@ class _TherapistRegisterPage3State extends State<TherapistRegisterPage3> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text("Contact Info"),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);  // Navigate back to the previous screen
-          },
+          onPressed: () => Navigator.pop(context),
         ),
-        title: const Text("Contact Info"),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-             const LinearProgressIndicator(
-              value: 1,
-              color: Colors.blue,
-            ),
-            const SizedBox(height: 16),
-            const Text("Contact Info", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-             TextField(
-              controller: phoneController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                prefixIcon: Icon(Icons.lock),
-                suffixIcon: Icon(Icons.remove_red_eye),
-                floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const LinearProgressIndicator(value: 0.75, color: Colors.blue),
+              const SizedBox(height: 16),
+              const Text("Contact Info", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  prefixIcon: Icon(Icons.phone),
+                  border: OutlineInputBorder(),
                 ),
               ),
-            ),
-             const SizedBox(height: 20), // Extra space to prevent overlap
-            TextField(
-              controller: addressController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Address',
-                prefixIcon: Icon(Icons.lock),
-                suffixIcon: Icon(Icons.remove_red_eye),
-                floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
+              const SizedBox(height: 20),
+              TextField(
+                controller: addressController,
+                decoration: const InputDecoration(
+                  labelText: 'Address',
+                  prefixIcon: Icon(Icons.home),
+                  border: OutlineInputBorder(),
                 ),
               ),
-            ),
-
-            const Spacer(),
-           ElevatedButton(
-            onPressed: () async {
-          try {
-             print("=== Therapist Registration Data ===");
-            final response = await http.post(
-              Uri.parse(ApiConfig.registerRoute), // Use the correct endpoint for registration
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({
-                'email': widget.email,
-                'password': widget.password,
-                'firstName': widget.firstName,
-                'lastName': widget.lastName,
-                'gender': widget.gender,
-                'phone': "+1234567890",
-                'address': addressController.text,
-              }),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TherapistRegisterConfirmPage(
+                  email: widget.email,
+                  password: widget.password,
+                  firstName: widget.firstName,
+                  lastName: widget.lastName,
+                  gender: widget.gender,
+                  maritalStatus: widget.maritalStatus,
+                  phone: phoneController.text,
+                  address: addressController.text,
+                ),
+              ),
             );
-
-            if (response.statusCode == 201) {
-              // Handle success response
-              print('Registration successful');
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const HomePage()),
-              );
-            } else {
-              // Handle error response
-              print('Registration failed: ${response.body}');
-            }
-          } catch (e) {
-            // Handle exceptions
-            print('Error: $e');
-          }
-        },
-        style: TextButton.styleFrom(
+          },
+          style: TextButton.styleFrom(
             minimumSize: const Size.fromHeight(50),
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
           ),
-        child: const Text("Submit"),
-      ),
-                ],
-              ),
-            ),
-          );
-        }
-      }
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Therapist Home")),
-      body: const Center(
-        child: Text("Welcome to the Therapist Home Page!", style: TextStyle(fontSize: 20)),
+          child: const Text("Next"),
+        ),
       ),
     );
   }
 }
+
+
+class TherapistRegisterConfirmPage extends StatefulWidget {
+  final String email;
+  final String password;
+  final String firstName;
+  final String lastName;
+  final String gender;
+  final String maritalStatus;
+  final String phone;
+  final String address;
+
+  const TherapistRegisterConfirmPage({
+    super.key,
+    required this.email,
+    required this.password,
+    required this.firstName,
+    required this.lastName,
+    required this.gender,
+    required this.maritalStatus,
+    required this.phone,
+    required this.address,
+  });
+
+  @override
+  State<TherapistRegisterConfirmPage> createState() => _TherapistRegisterConfirmPageState();
+}
+
+class _TherapistRegisterConfirmPageState extends State<TherapistRegisterConfirmPage> {
+  late TextEditingController emailController;
+  late TextEditingController passwordController;
+  late TextEditingController firstNameController;
+  late TextEditingController lastNameController;
+  late TextEditingController phoneController;
+  late TextEditingController addressController;
+
+  String gender = '';
+  String maritalStatus = '';
+
+  @override
+  void initState() {
+    super.initState();
+    emailController = TextEditingController(text: widget.email);
+    passwordController = TextEditingController(text: widget.password);
+    firstNameController = TextEditingController(text: widget.firstName);
+    lastNameController = TextEditingController(text: widget.lastName);
+    phoneController = TextEditingController(text: widget.phone);
+    addressController = TextEditingController(text: widget.address);
+    gender = widget.gender;
+    maritalStatus = widget.maritalStatus;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Confirm Info"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const LinearProgressIndicator(value: 1.0, color: Colors.blue),
+              const SizedBox(height: 16),
+              const Text("Review & Edit Your Info", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              _buildField("Email", emailController, Icons.email),
+              _buildField("Password", passwordController, Icons.lock, obscure: true),
+              _buildField("First Name", firstNameController, Icons.person),
+              _buildField("Last Name", lastNameController, Icons.person_outline),
+              _buildDropdown("Gender", ['Male', 'Female'], gender, (val) => setState(() => gender = val)),
+              _buildDropdown("Marital Status", ['Single', 'Married', 'Divorced', 'Widowed'], maritalStatus, (val) => setState(() => maritalStatus = val)),
+              _buildField("Phone", phoneController, Icons.phone),
+              _buildField("Address", addressController, Icons.home),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: TextButton(
+          onPressed: () async {
+            try {
+    // Create Firebase Auth user first
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
+
+      String uid = userCredential.user!.uid;
+
+      // Then save user data in Firestore using UID as document ID
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'email': emailController.text,
+        'firstName': firstNameController.text,
+        'lastName': lastNameController.text,
+        'gender': gender,
+        'maritalStatus': maritalStatus,
+        'phone': phoneController.text,
+        'address': addressController.text,
+        'role': 'Therapist',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+            
+
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const MyAppFile()),
+              );
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Error: $e")),
+              );
+            }
+          },
+          style: TextButton.styleFrom(
+            minimumSize: const Size.fromHeight(50),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text("Confirm and Submit"),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildField(String label, TextEditingController controller, IconData icon, {bool obscure = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: controller,
+        obscureText: obscure,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          border: const OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown(String label, List<String> items, String value, Function(String) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: const Icon(Icons.arrow_drop_down),
+          border: const OutlineInputBorder(),
+        ),
+        items: items.map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+        onChanged: (val) => onChanged(val!),
+      ),
+    );
+  }
+}
+

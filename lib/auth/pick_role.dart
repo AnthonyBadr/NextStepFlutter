@@ -1,28 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/admin/UserManagement.dart'; // Remove if unused
+import 'package:my_app/auth/confirmemail.dart';
+import 'package:my_app/auth/login_page.dart';
+import 'package:my_app/auth/test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:my_app/auth/register_therapist.dart';
+
 class PickRolePage extends StatelessWidget {
   const PickRolePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Choose Your Role'),
-        automaticallyImplyLeading: false,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
+      resizeToAvoidBottomInset: false,
+      backgroundColor: Colors.white,
+      body: Container(
+        color: Colors.white,
+        child: SafeArea(
+          top: true,
+          bottom: false, // Removes bottom padding that causes white bar
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const SizedBox(height: 8),
+
                 // Logo
                 Container(
-                  height: 120,
-                  width: 120,
-                  margin: const EdgeInsets.symmetric(vertical: 24),
+                  height: 100,
+                  width: 100,
+                  margin: const EdgeInsets.symmetric(vertical: 16),
                   alignment: Alignment.center,
                   child: const Icon(
                     Icons.psychology_alt,
@@ -49,15 +57,16 @@ class PickRolePage extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
-                // Role Grid
+                // GridView of roles
                 GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
                   crossAxisCount: 2,
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: 3 / 3.2,
                   children: [
                     _buildRoleCard(
                       context,
@@ -89,6 +98,26 @@ class PickRolePage extends StatelessWidget {
                     ),
                   ],
                 ),
+
+                const SizedBox(height: 24),
+
+                // Join Team Button
+                TextButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Join team action coming soon!')),
+                    );
+                  },
+                  child: const Text(
+                    'To join the Next Step team, click here',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.blue,
+                      decoration: TextDecoration.underline,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ],
             ),
           ),
@@ -97,38 +126,43 @@ class PickRolePage extends StatelessWidget {
     );
   }
 
-  Widget _buildRoleCard(BuildContext context, String title, IconData icon,
-      Color color, String description) {
+  Widget _buildRoleCard(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color color,
+    String description,
+  ) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
-        onTap: () => _selectRole(context, title.toLowerCase()), // Pass context here
+        onTap: () => _selectRole(context, title.toLowerCase()),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
-                  size: 32,
+                  size: 30,
                   color: color,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
@@ -137,7 +171,7 @@ class PickRolePage extends StatelessWidget {
               Text(
                 description,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: Colors.grey,
                 ),
                 textAlign: TextAlign.center,
@@ -152,15 +186,21 @@ class PickRolePage extends StatelessWidget {
   }
 
   void _selectRole(BuildContext context, String role) async {
-    print('Selected Role: $role'); // Log the selected role
+    print('Selected Role: $role');
+
     if (role == "therapist") {
-      // Navigate to the Therapist_Register page
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) =>  TherapistRegisterPage1()),
+        MaterialPageRoute(builder: (context) => const TherapistRegisterPage1()),
+      );
+    } else if (role == "patient") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
       );
     }
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('userRole', role); // Store the role
+    await prefs.setString('userRole', role);
   }
 }

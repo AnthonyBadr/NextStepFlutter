@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../ApiConfig.dart';
+
+import 'package:my_app/auth/pick_role.dart';
+import 'package:my_app/therapist/therpiastHomePage.dart';
+import 'package:my_app/component/TextField.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,199 +15,192 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isLoading = false;
-  bool _obscurePassword = true;
-  String _errorMessage = '';
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  bool isLoading = false;
+  bool rememberMe = false;
+  String? message;
 
-  // Keys for SharedPreferences
-  static const String isLoggedInKey = 'isLoggedIn';
-  static const String userDataKey = 'userData';
-  static const String usernameKey = 'username';
-  static const String abeastKey = 'abeast';
+  Future<void> loginUser() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text;
 
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) {
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        message = "Email and password are required.";
+      });
       return;
     }
 
     setState(() {
-      _isLoading = true;
-      _errorMessage = '';
+      isLoading = true;
+      message = null;
     });
 
     try {
-      final response = await http.post(
-        Uri.parse(ApiConfig.loginRoute),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': _usernameController.text,
-          'password': _passwordController.text,
-        }),
-      );
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        
-        // Store login state and user data
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(isLoggedInKey, true);
-        await prefs.setString(userDataKey, jsonEncode(data));
-        await prefs.setString(usernameKey, _usernameController.text);
-        await prefs.setString(abeastKey, _usernameController.text);
-        // Navigate to home page
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/');
-        }
-      } else {
-        setState(() {
-          _errorMessage = 'Invalid username or password';
-        });
+      final uid = userCredential.user?.uid;
+
+      if (uid == null) {
+        setState(() => message = "❌ User ID not found.");
+        return;
       }
+
+      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      if (!doc.exists) {
+        setState(() => message = "❌ User not found in Firestore.");
+        return;
+      }
+
+      final data = doc.data();
+      final role = data?['role'];
+
+      if (rememberMe) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('rememberMe', true);
+        await prefs.setBool('login', true);
+      }
+
+      setState(() => message = "✅ Logged in successfully");
+
+      if (role == "Therapist") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => TherpasitHomePage()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => PickRolePage()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        message = "❌ ${e.message}";
+      });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Connection error. Please try again.';
+        message = "❌ Unexpected error: $e";
       });
     } finally {
       setState(() {
-        _isLoading = false;
+        isLoading = false;
       });
     }
-  }
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Logo or App Name
-                  const Icon(
-                    Icons.lock_outline,
-                    size: 80,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 40),
+              Center(
+                child: Container(
+                  height: 100,
+                  width: 100,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFE3F2FD),
+                  ),
+                  child: const Icon(
+                    Icons.psychology_alt,
+                    size: 60,
                     color: Colors.blue,
                   ),
-                  const SizedBox(height: 32),
-                  
-                  // Error Message
-                  if (_errorMessage.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      color: Colors.red.shade100,
-                      child: Text(
-                        _errorMessage,
-                        style: TextStyle(color: Colors.red.shade900),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-
-                  // Username Field
-                  TextFormField(
-                    controller: _usernameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Username',
-                      prefixIcon: Icon(Icons.person),
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your username';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Password Field
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock),
-                      border: const OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Colors.white,
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Login Button
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _login,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Text(
-                            'Login',
-                            style: TextStyle(fontSize: 16),
-                          ),
-                  ),
-                  
-                  // Register Link
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      // Navigate to registration page
-                      Navigator.pushNamed(context, '/register');
-                    },
-                    child: const Text(
-                      "Don't have an account? Register",
-                      style: TextStyle(color: Colors.blue),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(height: 24),
+              const Text(
+                'Welcome Back!',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Please enter your credentials to login',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              Card(
+                color: const Color(0xFFE3F2FD),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      CustomTextField(
+                        label: "Email",
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        label: "Password",
+                        controller: passwordController,
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: rememberMe,
+                            onChanged: (value) {
+                              setState(() {
+                                rememberMe = value ?? false;
+                              });
+                            },
+                            activeColor: Colors.blue,
+                            checkColor: Colors.white,
+                          ),
+                          const Text("Remember Me"),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      isLoading
+                          ? const CircularProgressIndicator()
+                          : SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: loginUser,
+                                style: ElevatedButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  foregroundColor: Colors.black,
+                                ),
+                                child: const Text("Login"),
+                              ),
+                            ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (message != null)
+                Text(
+                  message!,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: message!.contains("✅") ? Colors.green : Colors.red,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+            ],
           ),
         ),
       ),
