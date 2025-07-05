@@ -21,6 +21,27 @@ class _LoginPageState extends State<LoginPage> {
   bool rememberMe = false;
   String? message;
 
+  @override
+  void initState() {
+    super.initState();
+    loadSavedCredentials();
+  }
+
+  Future<void> loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('email');
+    final savedPassword = prefs.getString('password');
+    final savedRememberMe = prefs.getBool('rememberMe') ?? false;
+
+    if (savedRememberMe && savedEmail != null && savedPassword != null) {
+      setState(() {
+        emailController.text = savedEmail;
+        passwordController.text = savedPassword;
+        rememberMe = true;
+      });
+    }
+  }
+
   Future<void> loginUser() async {
     final email = emailController.text.trim();
     final password = passwordController.text;
@@ -58,10 +79,17 @@ class _LoginPageState extends State<LoginPage> {
       final data = doc.data();
       final role = data?['role'];
 
+      final prefs = await SharedPreferences.getInstance();
       if (rememberMe) {
-        final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('rememberMe', true);
         await prefs.setBool('login', true);
+        await prefs.setString('userId', uid);
+        await prefs.setString('email', email);
+        await prefs.setString('password', password);
+      } else {
+        await prefs.remove('rememberMe');
+        await prefs.remove('email');
+        await prefs.remove('password');
       }
 
       setState(() => message = "✅ Logged in successfully");

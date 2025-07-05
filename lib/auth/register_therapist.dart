@@ -3,6 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/auth/login_page.dart';
 import 'package:my_app/auth/test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:my_app/homepage/pageorg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../ApiConfig.dart';
@@ -14,6 +15,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class TherapistRegisterPage1 extends StatefulWidget {
   const TherapistRegisterPage1({super.key});
@@ -27,32 +31,147 @@ class _TherapistRegisterPage1State extends State<TherapistRegisterPage1> {
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
+  bool isLoadingGoogle = false;
+  bool isLoadingEmail = false;
+
+  // ───────────────────────── Google flow ──────────────────────────
+  Future<void> signInWithGoogle() async {
+    setState(() => isLoadingGoogle = true);
+    try {
+      final googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut(); // always force account picker
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        setState(() => isLoadingGoogle = false);
+        return; // user canceled
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+      final isNew = userCredential.additionalUserInfo?.isNewUser ?? false;
+
+      if (!isNew) {
+        // user exists → stay here
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("This user already exists")),
+        );
+        await FirebaseAuth.instance.signOut(); // optional: keep auth state clean
+        return;
+      }
+
+      // new user → proceed
+      final user = userCredential.user!;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TherapistRegisterPage2(
+            email: user.email ?? '',
+            password: '',
+          ),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'account-exists-with-different-credential') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text("Email already registered with another sign-in method.")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Sign-in failed: ${e.message}")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Unexpected error: $e")),
+      );
+    } finally {
+      setState(() => isLoadingGoogle = false);
+    }
+  }
+
+  // ───────────────────────── Email flow ───────────────────────────
+  Future<void> handleEmailContinue() async {
+    if (passwordController.text != confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Passwords do not match")),
+      );
+      return;
+    }
+
+    final email = emailController.text.trim();
+    if (email.isEmpty ||
+        passwordController.text.isEmpty ||
+        confirmPasswordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all fields")),
+      );
+      return;
+    }
+
+    setState(() => isLoadingEmail = true);
+
+    // check if email is already in Firebase
+    final methods =
+        await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+    if (methods.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("This user already exists")),
+      );
+      setState(() => isLoadingEmail = false);
+      return; // stop
+    }
+
+    // new email → proceed
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TherapistRegisterPage2(
+          email: email,
+          password: passwordController.text,
+        ),
+      ),
+    );
+    setState(() => isLoadingEmail = false);
+  }
+
+  // ───────────────────────── UI ───────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        title: const Text("Therapist Registration"),
-      ),
+      appBar: AppBar(title: const Text("Therapist Registration")),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            const LinearProgressIndicator(value: 0.33, color: Colors.blue),
+            const LinearProgressIndicator(value: .33, color: Colors.blue),
             const SizedBox(height: 16),
-            const Text("Account Details", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const Text("Account Details",
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             const Text("Please provide your login credentials."),
             const SizedBox(height: 24),
+
+            // Email / password fields
             TextField(
               controller: emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
                 labelText: 'Email',
                 prefixIcon: Icon(Icons.email),
-                floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
-                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                focusedBorder:
+                    OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                enabledBorder:
+                    OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
               ),
             ),
             const SizedBox(height: 16),
@@ -62,9 +181,10 @@ class _TherapistRegisterPage1State extends State<TherapistRegisterPage1> {
               decoration: const InputDecoration(
                 labelText: 'Password',
                 prefixIcon: Icon(Icons.lock),
-                floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
-                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                focusedBorder:
+                    OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                enabledBorder:
+                    OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
               ),
             ),
             const SizedBox(height: 16),
@@ -74,42 +194,67 @@ class _TherapistRegisterPage1State extends State<TherapistRegisterPage1> {
               decoration: const InputDecoration(
                 labelText: 'Confirm Password',
                 prefixIcon: Icon(Icons.lock_outline),
-                floatingLabelStyle: TextStyle(color: Colors.black),
-                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
-                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                focusedBorder:
+                    OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+                enabledBorder:
+                    OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
               ),
             ),
-            const SizedBox(height: 80),
-          ],
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: TextButton(
-          onPressed: () {
-            if (passwordController.text != confirmPasswordController.text) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Passwords do not match")),
-              );
-              return;
-            }
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: isLoadingEmail ? null : handleEmailContinue,
+                style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+                child: isLoadingEmail
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Continue with Email'),
+              ),
+            ),
 
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => TherapistRegisterPage2(
-                  email: emailController.text,
-                  password: passwordController.text,
+            const SizedBox(height: 20),
+            Row(
+              children: const [
+                Expanded(child: Divider(thickness: 1)),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text("OR"),
+                ),
+                Expanded(child: Divider(thickness: 1)),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Google button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.login),
+                label: isLoadingGoogle
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Sign in with Google"),
+                onPressed: isLoadingGoogle ? null : signInWithGoogle,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: Colors.grey),
+                  ),
                 ),
               ),
-            );
-          },
-          style: TextButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Next'),
+            ),
+            const SizedBox(height: 40),
+          ],
         ),
       ),
     );
@@ -436,6 +581,10 @@ class _TherapistRegisterConfirmPageState extends State<TherapistRegisterConfirmP
 
       String uid = userCredential.user!.uid;
 
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userId', uid);
+
       // Then save user data in Firestore using UID as document ID
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'email': emailController.text,
@@ -448,6 +597,9 @@ class _TherapistRegisterConfirmPageState extends State<TherapistRegisterConfirmP
         'role': 'Therapist',
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+
+  
 
             
 

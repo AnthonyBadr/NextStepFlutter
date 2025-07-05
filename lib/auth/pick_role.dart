@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/admin/UserManagement.dart'; // Remove if unused
+import 'package:my_app/homepage/pageorg.dart';
+import 'package:my_app/homepage/the_game.dart';
+import 'package:my_app/sharedpreferences/shared_pref.dart';
 import 'package:my_app/auth/confirmemail.dart';
 import 'package:my_app/auth/login_page.dart';
 import 'package:my_app/auth/test.dart';
@@ -191,12 +194,12 @@ class PickRolePage extends StatelessWidget {
     if (role == "therapist") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const TherapistRegisterPage1()),
+        MaterialPageRoute(builder: (context) =>  LoginPage()),
       );
     } else if (role == "patient") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
+        MaterialPageRoute(builder: (context) => const MyScreen()),
       );
     }
 

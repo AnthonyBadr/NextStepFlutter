@@ -21,8 +21,10 @@ class AppBottomNavBar extends StatelessWidget {
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
         BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
+        BottomNavigationBarItem(icon: Icon(Icons.search), label: "CreateCategory"),
         BottomNavigationBarItem(icon: Icon(Icons.notifications), label: "Alerts"),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+
       ],
     );
   }
