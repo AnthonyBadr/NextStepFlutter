@@ -99,49 +99,68 @@ class _TherapistRegisterPage1State extends State<TherapistRegisterPage1> {
   }
 
   // ───────────────────────── Email flow ───────────────────────────
-  Future<void> handleEmailContinue() async {
-    if (passwordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Passwords do not match")),
-      );
-      return;
-    }
+Future<void> handleEmailContinue() async {
+  final email = emailController.text.trim();
+  final password = passwordController.text;
+  final confirmPassword = confirmPasswordController.text;
 
-    final email = emailController.text.trim();
-    if (email.isEmpty ||
-        passwordController.text.isEmpty ||
-        confirmPasswordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
-      );
-      return;
-    }
+  if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please fill all fields")),
+    );
+    return;
+  }
 
-    setState(() => isLoadingEmail = true);
+  if (password != confirmPassword) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Passwords do not match")),
+    );
+    return;
+  }
 
-    // check if email is already in Firebase
-    final methods =
-        await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
-    if (methods.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("This user already exists")),
-      );
-      setState(() => isLoadingEmail = false);
-      return; // stop
-    }
+  setState(() => isLoadingEmail = true);
 
-    // new email → proceed
+  try {
+    // Attempt to create the user silently
+    final userCredential = await FirebaseAuth.instance
+        .createUserWithEmailAndPassword(email: email, password: password);
+
+    // If successful, delete the user immediately
+    await userCredential.user?.delete();
+
+    // Proceed to next page
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => TherapistRegisterPage2(
           email: email,
-          password: passwordController.text,
+          password: password,
         ),
       ),
     );
+  } on FirebaseAuthException catch (e) {
+    if (e.code == 'email-already-in-use') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("This email is already registered. Please use another.")),
+      );
+      emailController.clear();
+      passwordController.clear();
+      confirmPasswordController.clear();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Firebase error: ${e.message}")),
+      );
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Unexpected error: $e")),
+    );
+  } finally {
     setState(() => isLoadingEmail = false);
   }
+}
+
+
 
   // ───────────────────────── UI ───────────────────────────────────
   @override
@@ -572,36 +591,40 @@ class _TherapistRegisterConfirmPageState extends State<TherapistRegisterConfirmP
         child: TextButton(
           onPressed: () async {
             try {
-    // Create Firebase Auth user first
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: emailController.text.trim(),
-            password: passwordController.text.trim(),
-          );
+              String uid;
 
-      String uid = userCredential.user!.uid;
+              if (passwordController.text.trim().isNotEmpty) {
+                // Email/password flow
+                UserCredential userCredential = await FirebaseAuth.instance
+                    .createUserWithEmailAndPassword(
+                      email: emailController.text.trim(),
+                      password: passwordController.text.trim(),
+                    );
+                uid = userCredential.user!.uid;
+              } else {
+                // Google Sign-In flow
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) {
+                  throw Exception("No signed-in Google user found.");
+                }
+                uid = user.uid;
+              }
 
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('userId', uid);
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userId', uid);
-
-      // Then save user data in Firestore using UID as document ID
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'email': emailController.text,
-        'firstName': firstNameController.text,
-        'lastName': lastNameController.text,
-        'gender': gender,
-        'maritalStatus': maritalStatus,
-        'phone': phoneController.text,
-        'address': addressController.text,
-        'role': 'Therapist',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-
-  
-
-            
+              // Save user to Firestore
+              await FirebaseFirestore.instance.collection('users').doc(uid).set({
+                'email': emailController.text,
+                'firstName': firstNameController.text,
+                'lastName': lastNameController.text,
+                'gender': gender,
+                'maritalStatus': maritalStatus,
+                'phone': phoneController.text,
+                'address': addressController.text,
+                'role': 'Therapist',
+                'createdAt': FieldValue.serverTimestamp(),
+              });
 
               Navigator.pushReplacement(
                 context,
@@ -655,4 +678,3 @@ class _TherapistRegisterConfirmPageState extends State<TherapistRegisterConfirmP
     );
   }
 }
-

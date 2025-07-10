@@ -194,12 +194,12 @@ class PickRolePage extends StatelessWidget {
     if (role == "therapist") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) =>  LoginPage()),
+        MaterialPageRoute(builder: (context) =>  TherapistRegisterPage1()),
       );
     } else if (role == "patient") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const MyScreen()),
+        MaterialPageRoute(builder: (context) => const LoginPage()),
       );
     }
 

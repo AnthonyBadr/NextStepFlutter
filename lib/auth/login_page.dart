@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:my_app/auth/pick_role.dart';
 import 'package:my_app/therapist/therpiastHomePage.dart';
@@ -120,6 +121,69 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> signInWithGoogle() async {
+    setState(() {
+      isLoading = true;
+      message = null;
+    });
+
+    try {
+      await GoogleSignIn().signOut(); // Always show account picker
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final user = userCredential.user;
+      if (user == null) throw Exception("Firebase user is null");
+
+      final uid = user.uid;
+      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      if (!doc.exists) {
+        setState(() {
+          message = "❌ This Google account is not registered.";
+          isLoading = false;
+        });
+        await FirebaseAuth.instance.signOut();
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userId', uid);
+      await prefs.setBool('login', true);
+
+      final role = doc['role'];
+      if (role == "Therapist") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => TherpasitHomePage()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => PickRolePage()),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        message = "❌ Google sign-in failed: $e";
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -200,19 +264,39 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 8),
                       isLoading
                           ? const CircularProgressIndicator()
-                          : SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: loginUser,
-                                style: ElevatedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                          : Column(
+                              children: [
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: loginUser,
+                                    style: ElevatedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      foregroundColor: Colors.black,
+                                    ),
+                                    child: const Text("Login"),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  foregroundColor: Colors.black,
                                 ),
-                                child: const Text("Login"),
-                              ),
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    icon: const Icon(Icons.login, color: Colors.red),
+                                    label: const Text("Sign in with Google"),
+                                    onPressed: signInWithGoogle,
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: Colors.grey),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                     ],
                   ),
